@@ -1,0 +1,10 @@
+planning\_poker.utils package
+=============================
+
+Module contents
+---------------
+
+.. automodule:: planning_poker.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+  <div class="container">
+    <div class="row">
+      <div class="col">
+        <h1>Bienvenue sur planning poker</h1>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <p>Vous pouvez créer une partie ou rejoindre une partie existante</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#create-session">Créer une partie</button>
+      </div>
+      <div class="col">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#join-session">Rejoindre
+          une partie</button>
+      </div>
+    </div>
+    <div class="row my-4">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Créateur</th>
+              <th>Participants</th>
+              <th>Créé le</th>
+              <th>Résultat</th>
+{#              <th>Fichier résultat</th>#}
+              <th>Actions</th>
+
+            </tr>
+          </thead>
+          <tbody>
+            {% for session in objects %}
+              <tr>
+                <td>{{ session.id }}</td>
+                <td>{{ session.owner }}</td>
+                <td>{{ session.participants.count }}</td>
+                <td>{{ session.created_at }}</td>
+                <td>
+                  {% if session.status == "finished" %}
+                    <span class="text-success">Terminé</span>
+                  {% else %}
+                    <span class="text-danger">En cours</span>
+                  {% endif %}
+                </td>
+{#                <td><a style="text-decoration: none" class="text-success" href="{{ session.result_file|default:"#" }}">{{ session.result_file| default:"-" }}</a></td>#}
+                <td><a style="text-decoration: none" class="text-success" href="{% url 'core:poker_session' session.id %}"> Détails </a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block modal %}
+  <div class="modal" id="join-session">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">Rejoindre une partie</h2>
+        </div>
+        <div class="modal-body">
+          <form action="{% url 'core:join_poker_session' %}" method="post">
+            {% csrf_token %}
+            <div class="row">
+              <div class="col">
+                <input type="text" class="form-control" name="session_id" placeholder="ID de la partie de planning poker">
+              </div>
+            </div>
+            <div class="row my-2">
+              <div class="col">
+                <button type="submit" class="btn btn-success">Rejoindre</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal" id="create-session">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">Créer une partie</h2>
+        </div>
+        <div class="modal-body">
+          <form action="{% url 'core:create_poker_session' %}" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="row">
+              <div class="col">
+                 {{ form | crispy }}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <button type="submit" class="btn btn-success">Créer</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

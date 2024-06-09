@@ -1,0 +1,77 @@
+planning\_poker.core package
+============================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   planning_poker.core.migrations
+
+Submodules
+----------
+
+planning\_poker.core.admin module
+---------------------------------
+
+.. automodule:: planning_poker.core.admin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.apps module
+--------------------------------
+
+.. automodule:: planning_poker.core.apps
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.forms module
+---------------------------------
+
+.. automodule:: planning_poker.core.forms
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.models module
+----------------------------------
+
+.. automodule:: planning_poker.core.models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.tests module
+---------------------------------
+
+.. automodule:: planning_poker.core.tests
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.urls module
+--------------------------------
+
+.. automodule:: planning_poker.core.urls
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.views module
+---------------------------------
+
+.. automodule:: planning_poker.core.views
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: planning_poker.core
+   :members:
+   :undoc-members:
+   :show-inheritance:

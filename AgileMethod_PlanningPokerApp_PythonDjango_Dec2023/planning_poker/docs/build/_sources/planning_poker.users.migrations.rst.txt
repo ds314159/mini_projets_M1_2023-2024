@@ -1,0 +1,21 @@
+planning\_poker.users.migrations package
+========================================
+
+Submodules
+----------
+
+planning\_poker.users.migrations.0001\_initial module
+-----------------------------------------------------
+
+.. automodule:: planning_poker.users.migrations.0001_initial
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: planning_poker.users.migrations
+   :members:
+   :undoc-members:
+   :show-inheritance:

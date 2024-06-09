@@ -1,0 +1,61 @@
+planning\_poker.users.tests package
+===================================
+
+Submodules
+----------
+
+planning\_poker.users.tests.factories module
+--------------------------------------------
+
+.. automodule:: planning_poker.users.tests.factories
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.users.tests.test\_admin module
+----------------------------------------------
+
+.. automodule:: planning_poker.users.tests.test_admin
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.users.tests.test\_forms module
+----------------------------------------------
+
+.. automodule:: planning_poker.users.tests.test_forms
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.users.tests.test\_models module
+-----------------------------------------------
+
+.. automodule:: planning_poker.users.tests.test_models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.users.tests.test\_urls module
+---------------------------------------------
+
+.. automodule:: planning_poker.users.tests.test_urls
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.users.tests.test\_views module
+----------------------------------------------
+
+.. automodule:: planning_poker.users.tests.test_views
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: planning_poker.users.tests
+   :members:
+   :undoc-members:
+   :show-inheritance:

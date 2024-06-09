@@ -1,0 +1,93 @@
+planning\_poker.core.migrations package
+=======================================
+
+Submodules
+----------
+
+planning\_poker.core.migrations.0001\_initial module
+----------------------------------------------------
+
+.. automodule:: planning_poker.core.migrations.0001_initial
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.migrations.0002\_pokersession\_created\_at module
+----------------------------------------------------------------------
+
+.. automodule:: planning_poker.core.migrations.0002_pokersession_created_at
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.migrations.0003\_pokersession\_feature\_field\_name\_and\_more module
+------------------------------------------------------------------------------------------
+
+.. automodule:: planning_poker.core.migrations.0003_pokersession_feature_field_name_and_more
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.migrations.0004\_feature module
+----------------------------------------------------
+
+.. automodule:: planning_poker.core.migrations.0004_feature
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.migrations.0005\_remove\_vote\_story\_feature\_story\_points\_feature\_voted\_and\_more module
+-------------------------------------------------------------------------------------------------------------------
+
+.. automodule:: planning_poker.core.migrations.0005_remove_vote_story_feature_story_points_feature_voted_and_more
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.migrations.0006\_alter\_participant\_unique\_together module
+---------------------------------------------------------------------------------
+
+.. automodule:: planning_poker.core.migrations.0006_alter_participant_unique_together
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.migrations.0007\_messages module
+-----------------------------------------------------
+
+.. automodule:: planning_poker.core.migrations.0007_messages
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.migrations.0008\_vote\_cafe\_vote\_interro\_tour\_vote\_tour module
+----------------------------------------------------------------------------------------
+
+.. automodule:: planning_poker.core.migrations.0008_vote_cafe_vote_interro_tour_vote_tour
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.migrations.0009\_pokersession\_players\_alter\_pokersession\_mode module
+---------------------------------------------------------------------------------------------
+
+.. automodule:: planning_poker.core.migrations.0009_pokersession_players_alter_pokersession_mode
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+planning\_poker.core.migrations.0010\_pokersession\_result\_file\_alter\_pokersession\_players module
+-----------------------------------------------------------------------------------------------------
+
+.. automodule:: planning_poker.core.migrations.0010_pokersession_result_file_alter_pokersession_players
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: planning_poker.core.migrations
+   :members:
+   :undoc-members:
+   :show-inheritance:

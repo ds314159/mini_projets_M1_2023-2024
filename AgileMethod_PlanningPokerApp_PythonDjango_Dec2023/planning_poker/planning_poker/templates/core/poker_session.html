@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <div class="container-fluid">
+    <div class="row">
+      <h1 class="text-success">Session de planning poker numéro : {{ poker_session.id }}</h1>
+      <h5>Mode : <small class="text-muted">{{ poker_session.get_mode_display }}</small></h5>
+      <h5>Statut : <small class="text-muted">{{ poker_session.get_status_display }}</small></h5>
+    </div>
+    <div class="row my-4">
+      <div class="col-md-12">
+        <h3 class="text-success">Participants</h3>
+        <div>
+          {% for participant in poker_session.participants.all %}
+            <span>{{ participant.user }} </span> {% if not forloop.last %}
+            |
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="row my-4">
+      <div class="col-md-8">
+        <div class="row">
+          <div class="col-md-">
+            <h3 class="text-success">Fonctionnalités</h3>
+            <div class="row">
+              {% for feature in poker_session.get_previous_features %}
+                <div class="col-md-3 d-flex align-items-stretch">
+                  <div class="card w-100">
+                    <div class="card-body">
+                      <h5 class="card-title">{{ feature.title }}</h5>
+                    </div>
+                    <div class="card-footer text-center bg-success">
+                      <span class="rounded  text-white p-2">Difficulté : {{ feature.story_points }}</span>
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+              {% if poker_session.get_next_feature %}
+                <div class="col-md-3 d-flex align-items-stretch">
+                  <div class="card w-100">
+                    <div class="card-body">
+                      <h5 class="card-title">{{ poker_session.get_next_feature.title }}</h5>
+                    </div>
+                    <div class="card-footer text-center bg-warning">
+                      <span class="rounded text-white p-2">En cours de vote</span>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% if poker_session.can_start %}
+          {% if not poker_session.status == "finished" %}
+            <div class="row my-4">
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "0" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_0.svg' %}" alt="">
+                </a>
+              </div>
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "1" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_1.svg' %}" alt="">
+                </a>
+              </div>
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "2" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_2.svg' %}" alt="">
+                </a>
+              </div>
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "3" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_3.svg' %}" alt="">
+                </a>
+              </div>
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "5" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_5.svg' %}" alt="">
+                </a>
+              </div>
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "8" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_8.svg' %}" alt="">
+                </a>
+              </div>
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "13" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_13.svg' %}" alt="">
+                </a>
+              </div>
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "20" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_20.svg' %}" alt="">
+                </a>
+              </div>
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "40" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_40.svg' %}" alt="">
+                </a>
+              </div>
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "100" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_100.svg' %}" alt="">
+                </a>
+              </div>
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "cafe" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_cafe.svg' %}" alt="">
+                </a>
+              </div>
+              <div class="col-md-2">
+                <a class="bg-transparent border-0" href='{% url "core:vote" poker_session.pk "interro" %}'>
+                  <img height="200" width="150" src="{% static 'cartes/cartes_interro.svg' %}" alt="">
+                </a>
+              </div>
+            </div>
+          {% endif %}
+        {% endif %}
+
+      </div>
+      {% if poker_session.can_start %}
+        {% if not poker_session.status == "finished" %}
+          <div class="col-md-4">
+            <h2 class="fw-bolder">Votes</h2>
+            <div>
+              {% if not poker_session.status == "finished" %}
+                {% for tour in poker_session.get_next_feature.tours_reverse %}
+                  <div class="row" id="votes-results">
+                    <div class="col">
+                      <h4 class="bg-success text-white my-4 px-2 rounded">
+                        Tour {{ forloop.revcounter }}</h4>
+                      <h5>
+                        Votes
+                        ({{ tour.votes.count|default:0 }}/{{ participants.count }})</h5>
+                      {% for vote in tour.votes.all %}
+                        <span class="px-2"><span
+                          class="fw-bolder ">{{ vote.voter.user }}</span> : <span> {{ vote.vote }}</span></span> |
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+      {% endif %}
+
+    </div>
+
+  </div>
+{% endblock %}

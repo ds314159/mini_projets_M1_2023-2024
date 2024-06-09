@@ -1,0 +1,7 @@
+planning_poker
+==============
+
+.. toctree::
+   :maxdepth: 4
+
+   planning_poker

@@ -1,0 +1,10 @@
+site_name: Documentation Planning Poker
+theme:
+  name: material
+
+nav:
+  - Accueil : index.md
+  - Installation : install.md
+  - Comment jouer ?: game.md
+  - Structure du projet : project_structure.md
+  - API Reference: api_reference.md

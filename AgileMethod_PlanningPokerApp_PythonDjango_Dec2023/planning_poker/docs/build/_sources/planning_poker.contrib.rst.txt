@@ -1,0 +1,18 @@
+planning\_poker.contrib package
+===============================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   planning_poker.contrib.sites
+
+Module contents
+---------------
+
+.. automodule:: planning_poker.contrib
+   :members:
+   :undoc-members:
+   :show-inheritance:
