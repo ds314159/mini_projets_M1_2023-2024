@@ -1,0 +1,714 @@
+# Prédiction du Diabète par Classification Supervisée
+
+## I- Chargement et prétraitement des données
+
+Cette phase correspondra à un traitement minimal du dataset permettant de lancer les divers algorithmes de classification et d'apprécier un potentiel de performance, avant une deuxième phase qui correspondera à des traitements plus poussés afin d'optimiser la finesse de la prédiction
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# chargement du dataset et visualisation 
+df_brut = read.csv("data/diabetes.csv", sep = ",", header = TRUE)
+head(df_brut)
+```
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Examiner le dataset brut
+str(df_brut)
+summary(df_brut)
+
+```
+
+### 1- Réencodage de la variable catégorielle
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Conversion
+df_brut$Outcome = factor(df_brut$Outcome)
+
+# Vérifier les niveaux du facteur
+levels(df_brut$Outcome)
+
+```
+
+### 2- Détection d'éventuelles observations dupliquées
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Détecter les duplicata
+
+sum(duplicated)
+
+# Il n'existe pas d'observations redondantes
+
+```
+
+### 3- Détection des valeurs manquantes
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Racherche de NA:
+total_na = sum(is.na(df_brut))
+total_na
+```
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Recherche de valeurs manquantes encodées autrement, exploration du minimum des mesures 
+valeurs_minimales = sapply(df_brut[, -9], min)
+print(valeurs_minimales)
+```
+
+Les variables "SkinThickness", "Glucose","BloodPressure","BMI", "Insulin" ne peuvent avoir une valeur de 0 car ceci est impossible physiquement, la valeur 0 pour ces variables sera interprétée comme valeur manquante.
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Identifier les indices et le nombre de valeurs manquantes par variable
+variables_a_verifier = c("SkinThickness", "Glucose", "BloodPressure", "BMI", "Insulin")
+
+# Identifier les indices des valeurs de 0 pour chaque variable 
+indices_zero = lapply(df_brut[variables_a_verifier], function(x) which(x == 0))
+
+# Compter le nombre de zéros (valeurs manquantes) pour chaque variable
+nombre_zeros = sapply(indices_zero, length)
+
+# Calculer le pourcentage de valeurs manquantes encodées comme 0 pour chaque variable
+pourcentage_zeros = nombre_zeros / nrow(df_brut) * 100
+
+# Créer un dataframe pour un affichage plus clair
+resultats = data.frame(NombreZeros = nombre_zeros, PourcentageZeros = pourcentage_zeros)
+
+# Afficher les résultats
+print(resultats)
+
+
+```
+
+### 3- Imputation des valeurs manquantes
+
+-   Raisonnement et choix
+
+Appliquer des algorithmes comme l'imputation par PCA de missMDA est tentant, mais la méthode n'est pas bien appropriée pour aussi peu d'observations et des taux aussi élevés de valeurs manquantes, surtout qu'une seule ligne peut contenir plusieurs valeurs manquantes. Des tests ont été réalisés et ont donné des taux de bonnes prédictions qui était exagérément haut pour un set aussi réduit et des mesures médicales impliquant des marges d'erreur.
+
+Le choix se tourne donc vers une imputation plus robuste (au regard des caractéristiques initiales du dataset), on applique un algorithme des plus proches voisins.
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# La librairie knn pour imputation que l'on va utiliser, gère des valeurs manquantes de type NA, alors on ré-encode les valeurs manquantes en NA
+df_brut[variables_a_verifier] = lapply(df_brut[variables_a_verifier], function(x) ifelse(x == 0, NA, x))
+# vérification du réencodage
+sum(is.na(df_brut))
+
+```
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Imputation par les plus proches voisins
+library("DMwR2")
+df_imputed = knnImputation(df_brut, k = 10)
+# Vérification
+sum(is.na(df_imputed))
+```
+
+## II- Modélisations et prédictions sur les données traitées de façon minimaliste
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+
+# Isolation d'un set de test
+set.seed(1)
+indices = sample(1:nrow(df_imputed), 100)
+train = df_imputed[-indices,]
+test  = df_imputed[indices,]
+```
+
+### 1- Classification par plus proches voisins
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+
+# Partage en features et labels
+X_train = train[, -9]
+y_train = train[,9]
+
+X_test = test[, -9]
+y_test = test[, 9]
+
+# Trouver une valeur optimale du nombre de voisins en cross-validation
+library(class)
+tbc=NULL
+for (k in 1:100){
+  tmp=knn.cv(X_train, y_train,k=k)
+  tbc=c(tbc,mean(tmp==y_train))
+}
+plot(tbc,type='l')
+
+```
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Entrainer le modèle avec k optimal et récupérer les prédictions
+mod_knn_simple = knn(X_train,X_test,y_train,k=which.max(tbc))
+
+# Taux de bonnes prédictions knn
+tbc_knn = mean(mod_knn_simple == y_test)
+tbc_knn
+```
+
+### 2- Classification Par arbre de décision, méthode cart
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+library('rpart');library('rpart.plot')
+# Modèle d'arbre de décision avec la méthode cart
+mod_dt_simple = rpart(Outcome~.,data=train)
+# Prédiction sur le set de test
+p=predict(mod_dt_simple,newdata = test,type='class')
+# Diagramme de l'arbre de décision
+rpart.plot(mod_dt_simple)
+```
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Taux de bonne classification par arbre de décision :
+tbc_dt = mean(p==test$Outcome)
+tbc_dt
+```
+
+### 3- Classification par forêts aléatoires
+
+Ici, le nombre de variables à piocher au hasard, paramètre "mtry" est optimisé en itérant sur les différentes valeurs possibles et en choisissant le k minimisant l'erreur OOB.
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+library(randomForest)
+
+# Boucle sur les valeurs possibles de "mtry"
+oob_errors = NULL
+for (k in 1:8) {
+  mod_rf = randomForest(Outcome~., data=train, ntree=10000, mtry=k)
+  oob_errors[k] = mod_rf$err.rate[nrow(mod_rf$err.rate),1]
+}
+# Graphique de l'erreur Out Of Bag en fonction du nombre de variables piochées
+plot(oob_errors,type='l')
+```
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Modéle RF avec le paramètre mtry minimisant l'erreur OOB
+mod_rf_simple = randomForest(Outcome~.,data=train, ntree=10000, mtry=which.min(oob_errors))
+# Prédiction
+p=predict(mod_rf_simple,newdata = test,type='class')
+# Taux de bonne classification RF
+tbc_rf = mean(p==test$Outcome)
+tbc_rf
+```
+
+### 4- Classification par SVM
+
+Ici, pour ne pas compliquer le code, ni réduire les données train, le set test est utilisé pour la recherche du meilleur kernel de la SVM. En temps normal on se servirait de cross validation pour l'optimisation, ou on réserverait un set de validation.
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+library(kernlab)
+
+# Définir une liste des kernels à tester
+kernels = c("rbfdot", "polydot", "tanhdot", "laplacedot", "besseldot", "anovadot", "splinedot")
+
+# Initialiser une liste pour stocker les modèles SVM
+svm_models = list()
+
+# Initialiser une liste pour stocker les résultats
+svm_results = list()
+tbc_svm = NULL
+
+# Boucler sur les différents kernels
+for (kernel in kernels) {
+  # Entraîner le modèle SVM avec le kernel actuel
+  svm_model = ksvm(Outcome ~ ., data = train, scaled = FALSE, kernel = kernel)
+  
+  # Stocker le modèle dans la liste
+  svm_models[[kernel]] = svm_model
+  
+  # Faire des prédictions sur l'ensemble de test
+  pred_svm = predict(svm_model, newdata = test)
+  
+  # Créer et stocker la matrice de confusion
+  svm_results[[kernel]] = table(Predicted = pred_svm, Actual = test$Outcome)
+  
+  # et le taux de bonnes prédictions
+  tbc_svm = c(tbc_svm, mean(pred_svm == test$Outcome))
+  
+}
+
+# Afficher les résultats
+plot(tbc_svm , type ="l")
+
+```
+
+Pour la SVM, le Kernel polynomial, semble donner les meilleur résultat en phase de recherche
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# A prendre avec précaution car pas calculé sur des données de validation encore
+tbc_svm[2]
+```
+
+### 5- Classification par régression logistique
+
+-   régression simple
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+library(VGAM)
+
+# Modèle de régression logistique 
+mod_reglog_simple = vglm(Outcome ~ ., family = binomialff(link = "logitlink"), data = train)
+# Calcul de la probabilité d'avoir le diabète
+prob = predict(mod_reglog_simple, newdata = test, type = "response")
+# Conversion de la probabilité en classe 
+p = ifelse(prob > 0.5, 1, 0)
+# Taux de bonnes prédictions
+tbc_reglog = mean(p==test$Outcome)
+tbc_reglog
+```
+
+-   Régression pénalisée Lasso, sans optimisation du paramètre lambda
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+library(glmnet)
+# Modèle de régression Lasso 
+mod_reglasso_simple =glmnet(train[, -9],train$Outcome,alpha=1,family="binomial",lambda=0.01)
+# Prédiction
+p = predict(mod_reglasso_simple, newx = as.matrix(test[,-9]),type='class')
+# Taux de bonnes prédictions
+tbc_reglasso = mean(p == test$Outcome)
+tbc_reglasso
+```
+
+-   Régression pénalisé Lasso avec recherche d'un lambda optimal par cross validation
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+
+# Modèle de régression Lasso avec optimisation de Lambda par Cv
+mod_reglasso_cv = cv.glmnet(as.matrix(train[,-9]), as.matrix(train[,9]), alpha=1, family="binomial", nfolds = 62)
+# Lambda optimal ( ici celle qui minimise le plus l'erreur de la validation croisée)
+best_lambda = mod_reglasso_cv$lambda.min # 1se sinon
+# Ajustement d un modèle de régression Lasso avec cette valeur de lambda
+mod_reglasso_optimise = glmnet(train[, -9], train$Outcome, alpha=1, family="binomial", lambda=best_lambda)
+p = predict(mod_reglasso_optimise, newx = as.matrix(test[,-9]),type='class')
+# Taux de bonnes Classification
+tbc_reglasso_opt = mean(p == test$Outcome)
+tbc_reglasso_opt
+
+```
+
+## III- Phase d'ingénierie de l'information
+
+Les premiers modèles, lancés sur des données traitées de façon minimaliste, sont prometteurs en particulier pour les random forests et la régression logistique. Dans cette deuxième phase nous essayons de combler des faiblesses du dataset initial et d'améliorer la qualité de l'apprentissage.
+
+### 1- Détection des Outliers
+
+Plusieurs variables ont des valeurs extrêmes, isolons les observations à une distance de plus de trois équarts types de la moyenne:
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Fonction pour détecter les outliers, basée sur le score Z ( distance de plus de 3 équarts type de la moyenne)
+
+detect_outliers_z = function(data, threshold = 3) {
+  z_scores = scale(data) # Calcul des scores Z
+  abs_z_scores = abs(z_scores)
+  outlier_indices = which(abs_z_scores > threshold, arr.ind=TRUE)
+  
+  # Créer un dataframe pour une meilleure lisibilité
+  outliers_df = data.frame(row = outlier_indices[, "row"],
+                            col = outlier_indices[, "col"])
+  
+  # Ajouter les noms des colonnes pour les indices de colonnes
+  outliers_df$col_name = colnames(data)[outliers_df$col]
+  
+  # Extraire la valeur aberrante pour chaque outlier détecté
+  outliers_df$outlier_value = mapply(function(row, col) data[row, col], outliers_df$row, outliers_df$col)
+  
+  return(outliers_df)
+}
+
+# version intervalles interquartiles
+detect_outliers_iqr = function(data, threshold = 1.5) {
+  q1 = apply(data, 2, quantile, probs = 0.25)
+  q3 = apply(data, 2, quantile, probs = 0.75)
+  iqr = q3 - q1
+  lower_bound = q1 - threshold * iqr
+  upper_bound = q3 + threshold * iqr
+  
+  outliers_indices <- arrayInd(data > upper_bound | data < lower_bound, .dim = dim(data), arr.ind = TRUE)
+  
+  outliers_df <- data.frame(row = outliers_indices[, "row"],
+                            col = outliers_indices[, "col"])
+  
+  outliers_df$col_name <- colnames(data)[outliers_df$col]
+  
+  outliers_df$outlier_value <- mapply(function(row, col) data[row, col], outliers_df$row, outliers_df$col)
+  
+  return(outliers_df)
+}
+
+# Détection des outliers par la fonction élaborée ci-dessus
+outliers_z = detect_outliers_z(df_imputed[,-9])
+outliers_z
+
+```
+
+-   Raisonnement et choix par rapport au outliers :
+
+    La détection des outliers isole 54 valeurs extrêmes dans 48 observations, elles ont été revues une à une.
+
+    Bien que les valeurs extrêmes sur des données médicales soient souvent une source d'information sur une condition en particulier (l'écart par rapport à une norme est médicalement un symptôme), leur supression ici serait plus prudente.
+
+    En effet, le but de la modélisation est la détection précoce du diabète, dans une démarche de prévention, chez des personnes qui pourraient échapper à un suivi médical régulier. Les Outliers détectés, quand ils ne sont pas des erreurs de saisie, sont tous assez extrêmes pour imposer au sujet concerné une prise en charge médicale régulière, qui incluerait un simple test fiable de détection du diabète.
+
+    Le choix est donc de supprimer les observations contenant des Outliers.
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Suppression des observations contenant des outliers
+df_imputed_wo = df_imputed[-outliers_z$row, ]
+# Vérification de la nouvelle dimension du df après suppression des outliers
+dim(df_imputed_wo)
+```
+
+### 2- Construction de nouvelles variables
+
+-   Raisonnement et choix :
+
+    D'après le modèle RF lancé précédemment, les deux variables "Glucose" et "Insulin" sont les plus importantes dans la prédiction. Les variables choisies dans ce dataset sont orientées à la détection du diabète d'insulinorésistance. Le nombre total de variables dont nous disposons est limité et nous permet d'envisager des transformations pour en construire des nouvelles.
+
+    L'idée est d'appliquer une transformation logarithmique sur ces deux variables, et de considérer le ratio glucose/insuline pour la sensibilité à l'insuline, ainsi que leur produit glucose\*insuline pour la charge métabolique nécessaire à utiliser le glucose.
+
+    Une idée de catégorisation des différentes variables serait très intérresante, car elle prendrait en compte des seuils et améliorerait l'interprétabilité, mais engagerait un travail d'ingénierie de la donnée conséquent qui nuirait au focus "apprentissage supervisé" de ce travail.
+
+    En tout, quatre nouvelles variables seront construites:
+
+    -   Logarithme de la variable Glucose : log_G
+
+    -   Logarithme de la variable Insuline : log_I
+
+    -   ratio_GI : log_G/log_I
+
+    -   produit_GI : log_G \* log_I
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# construction des nouvelles variables:
+df_imputed_wo$log_G = log(df_imputed_wo$Glucose)
+df_imputed_wo$log_I = log(df_imputed_wo$Insulin)
+df_imputed_wo$ratio_GI = df_imputed_wo$log_G / df_imputed_wo$log_I
+df_imputed_wo$produit_GI = df_imputed_wo$log_G * df_imputed_wo$log_I
+
+# remettre Outcome en dernière position
+tmp = df_imputed_wo$Outcome
+df_imputed_wo= df_imputed_wo[,-9]
+df_imputed_wo$Outcome = tmp
+```
+
+### 3- Equilibrage des données dans la variable prédite
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# copie pour pouvoir retrouver df_imputed_wo à cette étape si impondérable
+df = df_imputed_wo[,]
+
+# Ratio issue diabétique par rapport à non diabétique:
+outcome_counts = table(df$Outcome)
+outcome_percentages = prop.table(outcome_counts) * 100
+print(outcome_percentages)
+```
+
+-   Raisonnement et choix :
+
+Les deux classes sont déséquilibrées en faveur de la classe non diabétique, ce qui pourrait favoriser l'erreur de type 2, un faux négatif, particulièrement dangereux en prédiction des maladies. En effet un faux positif pourrait facilement être vérifié par des tests poussés alors qu'un patient malade qui ne le sait pas court des risques.
+
+Les algorithmes utilisés ne gérent pas tous ce déséquilibre.
+
+La quantité de d'observations dont nous disposons est limitée, le choix d'équilibrage se tourne vers un sur-échantillonnage avec la technique smote (<https://doi.org/10.1613/jair.953>), qui semble fiable et applicable à notre dataset. Le suréchantillonge sera appliqué aux données de training, le set de test sera abord isolé pour éviter une fuite potentielle d'information.
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# Split en train-test
+set.seed(1)
+indices = sample(nrow(df), 100)
+# Ici nomenclature train2 et test2 pour différencier avec train et test ayant servi à la phase préliminaire
+train2 = df[-indices,]
+test2 = df[indices,]
+```
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+# appliquer l'algorithme SMOTE pour équilibrer les classes
+library(performanceEstimation)
+train2 =  smote(Outcome ~ ., train2, k = 5, perc.over =1,2)
+#Vérification de l'équilibre
+table(train2$Outcome)
+```
+
+### 4- Standardisation des données
+
+```{r, cache=TRUE, message=FALSE, warning=FALSE}
+X_train = train2[,-13]
+y_train = train2[,13]
+
+# Calcul de la moyenne et de l'écart type pour le jeu de données d'entraînement
+mean_train = apply(X_train, 2, mean)
+std_train = apply(X_train, 2, sd)
+
+# Application de la standardisation sur le jeu de données d'entraînement
+X_train_scaled = sweep(sweep(X_train, 2, mean_train, "-"), 2, std_train, "/")
+
+# Application de la même standardisation sur le jeu de données de test
+# Utiliser les moyennes et écarts types du jeu d'entraînement
+
+X_test = test2[,-13]
+y_test = test2[, 13]
+X_test_scaled = sweep(sweep(X_test, 2, mean_train, "-"), 2, std_train, "/")
+
+# Assembler en df pour les modeles prenant features et labels en entrée
+df_train = X_train_scaled
+df_train$Outcome = y_train
+
+df_test = X_test_scaled
+df_test$Outcome = y_test
+
+```
+
+## IV- Prédictions affinées
+
+### 1- Vote de majorité:
+
+L'idée est d'entrainer les divers algorithmes vus précédemment sur le dataset transformé. Et de récolter pour chacun ses prédictions. La prédiction finale pour une observation correspondera à la majorité de prédictions pour une observation.
+
+-   KNN
+
+```{r, message=FALSE, warning=FALSE}
+library(class)
+mod_knn_2 = knn(X_train_scaled,X_test_scaled,y_train,k=12)
+tbc_knn_2 = mean(mod_knn_2 == y_test)
+tbc_knn_2
+
+```
+
+-   Arbre de décision
+
+```{r, message=FALSE, warning=FALSE}
+library('rpart');library('rpart.plot')
+# Modèle d'arbre de décision avec la méthode cart
+mod_dt_2 = rpart(Outcome~.,data=df_train)
+# Prédiction sur le set de test
+p_dt_2 =predict(mod_dt_2,newdata = df_test,type='class')
+# Taux de bonne classification par arbre de décision :
+tbc_dt_2 = mean(p_dt_2==df_test$Outcome)
+tbc_dt_2
+```
+
+-   Forêts Aléatoires
+
+```{r, message=FALSE, warning=FALSE}
+library(randomForest)
+# Modéle RF avec le paramètre mtry minimisant l'erreur OOB
+mod_rf_2 = randomForest(Outcome~.,data=df_train, ntree=10000, mtry=4)
+# Prédiction
+p_rf_2=predict(mod_rf_2,newdata = df_test,type='class')
+# Taux de bonne classification RF
+tbc_rf_2 = mean(p_rf_2==df_test$Outcome)
+tbc_rf_2
+```
+
+-   SVM avec kernel polynomial
+
+```{r, message=FALSE, warning=FALSE}
+library(kernlab)
+# Modèle SVM
+svm_model_2 = ksvm(Outcome ~ ., data = df_train, kernel = "polydot")
+# Prédictions
+p_svm_2 = predict(svm_model_2, newdata = df_test)
+# Taux de bonne classification
+tbc_svm_2 = mean(p_svm_2 == y_test)
+  
+tbc_svm_2
+
+```
+
+-   Régression logistique sans pénalités
+
+```{r, message=FALSE, warning=FALSE}
+library(VGAM)
+
+# Modèle de régression logistique 
+mod_reglog_2 = vglm(Outcome ~ ., family = binomialff(link = "logitlink"), data = df_train)
+# Calcul de la probabilité d'avoir le diabète
+prob = predict(mod_reglog_2, newdata = df_test, type = "response")
+# Conversion de la probabilité en classe 
+p_reglog_2 = ifelse(prob > 0.45, 1, 0) 
+# Taux de bonnes prédictions
+tbc_reglog_2 = mean(p_reglog_2==y_test)
+tbc_reglog_2
+```
+
+-   Régression pénalisée Lasso, sans optimisation du paramètre lambda
+
+```{r, message=FALSE, warning=FALSE}
+library(glmnet)
+# Modèle de régression Lasso 
+mod_reglasso_2 =glmnet(df_train[,-13],df_train[,13],alpha=1,family="binomial",lambda=0.001)
+# Prédiction
+p_reglasso_2 = predict(mod_reglasso_2, newx = as.matrix(df_test[,-13]),type='class')
+# Taux de bonnes prédictions
+tbc_reglasso_2 = mean(p_reglasso_2 == df_test$Outcome)
+tbc_reglasso_2
+```
+
+-   Régression pénalisée Lasso avec recherche d'un lambda optimal par cross validation
+
+```{r, message=FALSE, warning=FALSE}
+# Modèle de régression Lasso avec optimisation de Lambda par Cv
+mod_reglasso_cv_2 = cv.glmnet(as.matrix(df_train[,-13]), as.matrix(df_train[,13]), alpha=1, family="binomial", nfolds = 82)
+# Lambda optimal ( ici celle qui minimise le plus l'erreur de la validation croisée)
+best_lambda_2 = mod_reglasso_cv_2$lambda.min # 1se sinon
+# Ajustement d un modèle de régression Lasso avec cette valeur de lambda
+mod_reglasso_optimise_2 = glmnet(df_train[, -13], df_train$Outcome, alpha=1, family="binomial", lambda=best_lambda_2)
+p_reglasso_opt_2 = predict(mod_reglasso_optimise_2, newx = as.matrix(df_test[,-13]),type='class')
+# Taux de bonnes Classification
+tbc_reglasso_opt_2 = mean(p_reglasso_opt_2 == df_test$Outcome)
+tbc_reglasso_opt_2
+
+```
+
+-   Refaire une régression logistique sans les variables éliminées par Lasso
+
+```{r, message=FALSE, warning=FALSE}
+# Variables éliminées par la régression Lasso:
+coef(mod_reglasso_2, s = best_lambda_2)
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Eliminer ratio_GI et produit_GI de la régréssion logistique
+# Modèle de régression logistique 
+mod_reglog_3 = vglm(Outcome ~  Pregnancies+Glucose+BloodPressure+SkinThickness+Insulin+BMI+DiabetesPedigreeFunction+Age+log_G+log_I, family = binomialff(link = "logitlink"), data = df_train)
+# Calcul de la probabilité d'avoir le diabète
+prob3 = predict(mod_reglog_2, newdata = df_test, type = "response")
+# Conversion de la probabilité en classe 
+p_reglog_3 = ifelse(prob > 0.45, 1, 0) 
+# Taux de bonnes prédictions
+tbc_reglog_3 = mean(p_reglog_3==y_test)
+tbc_reglog_3
+print("cette régréssion a le même taux de bon classement que la normale, pour la suite nous garderons la première.")
+```
+
+Nous remarquons une amélioration nette de la prédiction au niveau du taux de bon classement nous allons maintenant faire le "vote" pour avoir les prédictions ayant fédéré le maximum d'algorithmes.
+
+```{r, message=FALSE, warning=FALSE}
+# Rassembler toutes les prédictions dans une matrice ou un dataframe
+predictions <- data.frame(
+  KNN = as.numeric(mod_knn_2)-1,
+  ArbreDecision = as.numeric(p_dt_2)-1,
+  ForetsAleatoires = as.numeric(p_rf_2)-1,
+  SVM = as.numeric(p_svm_2)-1,
+  RegLog = as.numeric(p_reglog_2),
+  RegLasso = as.numeric(p_reglasso_2),
+  RegLassoCV = as.numeric(p_reglasso_opt_2)
+)
+
+# Calculer la prédiction finale basée sur le vote de majorité
+library(dplyr)
+predictions_finale = apply(predictions, 1, function(x) {
+  mode_pred = names(sort(table(x), decreasing = TRUE))[1]
+  return(as.numeric(mode_pred) ) 
+})
+
+# Apprécier les différentes métriques de la prédiction finale issue du vote:
+library(caret)
+conf_matrix_finale_vote = confusionMatrix(factor(predictions_finale), df_test$Outcome, positive ='1')
+
+conf_matrix_finale_vote
+
+```
+
+-   Interprétation des résultats de la table de Confusion
+
+    -   Vrais Positifs (VP): 30- Le modèle a correctement identifié 30 cas de diabète.
+
+    -   Faux Positifs (FP): 14 - Le modèle a incorrectement prédit 12 cas comme étant diabétiques alors qu'ils ne l'étaient pas.
+
+    -   Vrais Négatifs (VN): 49 - Le modèle a correctement identifié 49 cas non diabétiques.
+
+    -   Faux Négatifs (FN): 7 - Le modèle a manqué 7 cas de diabète, les classant incorrectement comme non diabétiques.
+
+    Le modèle semble avoir profité de la sagesse de l'ensemble pour donner un bon taux de bonnes prédictions, de l'ordre du 80 %.
+
+    En plus, dans les erreurs que le modèle a fait, l'erreur de type 2 (faux négatif) est minime, l'erreur se concentre en type 1 ( faux positif ), ce qui est à privilégier sur des prédictions de pathologies.
+
+### 2- Modèle de réseau neuronal dense
+
+Par curiosité, et pour observer le comportement d'un modèle de réseaux de neurones sur ce genre de données, plusieurs modèles denses ont été essayé, avec diverses longueurs et profondeurs de couches, voilà un exemple :
+
+```{r, eval=FALSE,cache=TRUE,message=FALSE, warning=FALSE}
+# Construction des couches
+library(keras)
+model <- keras_model_sequential() %>%
+  layer_dense(units = 4, input_shape = c(12), activation = 'relu', kernel_regularizer = regularizer_l2(0.001)) %>%
+  layer_dropout(rate = 0.2) %>%
+  layer_dense(units = 4, activation = 'relu', kernel_regularizer = regularizer_l2(0.001)) %>%
+  layer_dropout(rate = 0.2) %>%
+  layer_dense(units = 4, activation = 'relu', kernel_regularizer = regularizer_l2(0.001)) %>%
+  layer_dropout(rate = 0.2) %>%
+  layer_dense(units = 1, activation = 'sigmoid')
+
+# Compilation avec les paramètres adaptés 
+model %>% compile(
+  loss = 'binary_crossentropy',
+  optimizer = 'adam',
+  metrics = c('accuracy')
+)
+
+```
+
+```{r, eval=FALSE,cache=TRUE,message=FALSE, warning=FALSE}
+# Entraînement
+history <- model %>% fit(
+  as.matrix(X_train_scaled), as.numeric(y_train),
+  epochs = 300,
+  batch_size = 820,
+  validation_split = 0.2
+)
+```
+
+```{r, eval=FALSE, cache=TRUE, message=FALSE, warning=FALSE}
+# évaluation
+model %>% evaluate(as.matrix(X_test), as.numeric(y_test))
+```
+
+```         
+4/4 [==============================] - 0s 0s/step - loss: -456.6326 - accuracy: 0.6300      loss  accuracy  -456.6326    0.6300 
+
+Tous les modèles ont eu des résultats médiocres de l'ordre de 60-63 %, 
+
+ce qui était prévisible avec aussi peu d'observations.
+```
+
+## v- Importance des variables pour le modèle le plus performant
+
+Le modèle ayant obtenu la meilleure performance après bonne préparation des données est le modèle de la régression logistique.
+
+-   Significativité des coefficients de la régression
+
+```{r,cache=TRUE,message=FALSE, warning=FALSE}
+# Visualiser un sommaire du modèle
+summary(mod_reglog_2)
+```
+
+Par ordre décroissant de significativité, et avec un seuil alpha de 0.05, la régression logistique sur les données prétraitées et normalisées, donne:
+
+-   DiabetesPedigreeFunction (fonction de patrimoine héréditaire diabétique) : Le coefficient positif de 0,47061 est très significatif (p-value \< 0,001), indiquant qu'un score élevé de cette fonction est lié à un log-odd ( log(p/1-p)) plus élevée de développer le diabète, donc une plus grande probabilité de développer le diabète.
+
+-   Pregnancies (nombre de grossesses) : Le coefficient positif de 0,52058 est très significatif (p-value \< 0,001). Cela signifie qu'un nombre élevé de grossesses est associé à un risque accru de développer le diabète.
+
+-   Insulin (insuline) : Le coefficient négatif de -2,05509 Cela suggère qu'un niveau élevé d'insuline est associé à un risque réduit de diabète, ce qui est contre intuitif, car ce dataset est plutot orienté sur le diabète insulino-résistant, dont les symptomes sont une demande en insuline plus élevée.
+
+Il existe Plusieurs explications possibles pour ce résultat contre intuitif:
+
+Des cas de diabète de type 1, insulino-dépendant et qui se manifeste par une absence de sécrétion d'insuline.
+
+Le modèle pourrait également capturer des aspects complexes de la relation entre la sécrétion d'insuline et l'insulinorésistance, pour le modèle des niveaux élevés d'insuline pourraient indiquer une meilleure capacité de sécrétion d'insuline en réponse à l'insulinorésistance, ce qui pourrait être interprété par le modèle comme un facteur réduisant le risque immédiat de diabète.
+
+Ainsi que l'imputation, les erreurs de mesure etc..
+
+-   SkinThickness (épaisseur de la peau du triceps) : Le coefficient est positif de 0,32049, ce qui signifie qu'une plus grande épaisseur de la peau est liée à un risque accru de diabète.Ce qui est compatible avec la maladie recherchée, l'épaississement de la peau du triceps est synonyme de surpoids souvent corrélé à une consommation excessive de sucres, ce qui rend résistant à l'insuline.
+
+-   ratio_GI ( log(glucose)/log(insuline)) : Le coefficient positif de 2,47970, indiquant qu'un ratio élevé de glucose sur insuline est associé à une probabilité plus élevée de développer le diabète. En effet l'insuline est censé baisser le taux de glucose dans le sang, un taux élevé de glucose malgré la présence d'insuline est symptôme du diabète de type 2.
+
+## Conclusion
+
+En conclusion, l'étude sur la prédiction du diabète par classification supervisée des données Pima, a permis d'explorer diverses méthodes et techniques sur un jeu de données réel, allant du prétraitement simple à l'ingénierie des variables et l'équilibrage des données. Les résultats obtenus mettent en évidence l'importance d'une préparation minutieuse des données, incluant le nettoyage des données, l'imputation des valeurs manquantes, la détection et le traitement des valeurs aberrantes, ainsi que l'équilibrage des classes pour améliorer la performance des modèles.
+
+La variété des modèles testés, allant des plus proches voisins, aux arbres de décision, en passant par les forêts aléatoires, les SVM, et la régression logistique, a montré des performances variées mais globalement prometteuses, avec des taux de bonne classification allant jusqu'à 80% après optimisation et préparation adéquate des données. L'application de techniques telles que le suréchantillonnage SMOTE pour l'équilibrage des classes, la standardisation des variables, et la création de nouvelles variables à partir des données existantes, a permis d'augmenter significativement la précision des prédictions.
+
+L'analyse des coefficients de la régression logistique a révélé l'importance de plusieurs variables dans la prédiction du diabète, notamment la fonction de patrimoine héréditaire diabétique (DiabetesPedigreeFunction), le nombre de grossesses, et le niveau d'insuline, entre autres. Ces résultats soulignent l'importance de comprendre les relations complexes entre différents facteurs de risque et la maladie, et montrent le potentiel de la classification supervisée dans l'aide à la prédiction et à la prévention du diabète.
+
+Il est à souligner également, la nécéssité de se méfier d'un taux de bonnes prédictions trop haut sur ce genre de datasets, car souvent ceci est synonyme d'un problème dans la méthodologie.
+
+Enfin, cette étude illustre bien la complexité et les défis inhérents à la modélisation prédictive en santé, notamment la nécessité de disposer de données de haute qualité, l'importance de l'interprétation clinique des modèles, et le potentiel d'amélioration continue des modèles à travers l'expérimentation et l'optimisation.
